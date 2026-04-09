@@ -5,6 +5,10 @@ class TicketService {
     Scanner sc = new Scanner(System.in);
 
     public void issueTicket(int officerZoneId) {
+        String plate = "";
+        String violation = "";
+        double amount = 0;
+        
         try (Connection c = DBConnection.connect()) {
             System.out.println("\n=== Issue Ticket ===");
             System.out.println("Violation Types:");
@@ -18,11 +22,11 @@ class TicketService {
 
             String[] violations = {"", "Expired Meter", "No Parking Zone", "Wrong Zone", "Blocking", "Expired Registration"};
             double[] fines = {0, 50, 100, 75, 150, 200};
-            String violation = violations[vtype];
-            double amount = fines[vtype];
+            violation = violations[vtype];
+            amount = fines[vtype];
 
             System.out.print("Plate Number: ");
-            String plate = sc.nextLine();
+            plate = sc.nextLine();
 
             int sessionId = -1;
             PreparedStatement ps = c.prepareStatement(
@@ -47,24 +51,16 @@ class TicketService {
 
             System.out.println("Ticket issued: " + violation + " - $" + amount + " (Due in 7 days)");
             
-            try {
-                PreparedStatement findUser = c.prepareStatement(
-                        "SELECT v.UserId FROM Vehicles v WHERE v.Plate=?");
-                findUser.setString(1, plate);
-                ResultSet userRs = findUser.executeQuery();
-                if (userRs.next()) {
-                    int ownerId = userRs.getInt("UserId");
-                    System.out.println("[DEBUG] Found owner ID: " + ownerId);
-                    if (ownerId > 0) {
-                        NotificationService.sendNotification(String.valueOf(ownerId), 
-                            "Ticket issued for vehicle " + plate + ": " + violation + " - $" + amount, "Email");
-                        System.out.println("[DEBUG] Notification sent to user " + ownerId);
-                    } else {
-                        System.out.println("[DEBUG] No owner found for plate: " + plate);
-                    }
+            PreparedStatement findUser = c.prepareStatement(
+                    "SELECT v.UserId FROM Vehicles v WHERE v.Plate=?");
+            findUser.setString(1, plate);
+            ResultSet userRs = findUser.executeQuery();
+            if (userRs.next()) {
+                int ownerId = userRs.getInt("UserId");
+                if (ownerId > 0) {
+                    NotificationService.sendNotification(String.valueOf(ownerId), 
+                        "Ticket issued for vehicle " + plate + ": " + violation + " - $" + amount, "Email");
                 }
-            } catch (Exception e) {
-                System.out.println("Notification error: " + e.getMessage());
             }
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
