@@ -43,7 +43,16 @@ class FineService {
                     us.setInt(1, tid);
                     us.executeUpdate();
                     System.out.println("Payment successful.");
-                    NotificationService.sendNotification("Fine payment received for ticket " + tid);
+                    
+                    PreparedStatement findUser = c.prepareStatement(
+                            "SELECT v.UserId FROM Vehicles v JOIN Tickets t ON v.Plate=t.Plate WHERE t.Id=?");
+                    findUser.setInt(1, tid);
+                    ResultSet userRs = findUser.executeQuery();
+                    if (userRs.next() && userRs.getInt("UserId") > 0) {
+                        int ownerId = userRs.getInt("UserId");
+                        NotificationService.sendNotification(String.valueOf(ownerId), 
+                            "Payment confirmed for ticket " + tid + ". Thank you!", "Email");
+                    }
                 }
             } else {
                 System.out.println("Ticket not found.");

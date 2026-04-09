@@ -46,7 +46,16 @@ class TicketService {
             ins.executeUpdate();
 
             System.out.println("Ticket issued: " + violation + " - $" + amount + " (Due in 7 days)");
-            NotificationService.sendNotification("Ticket issued: " + violation + " - $" + amount);
+            
+            PreparedStatement findUser = c.prepareStatement(
+                    "SELECT v.UserId FROM Vehicles v WHERE v.Plate=?");
+            findUser.setString(1, plate);
+            ResultSet userRs = findUser.executeQuery();
+            if (userRs.next() && userRs.getInt("UserId") > 0) {
+                int ownerId = userRs.getInt("UserId");
+                NotificationService.sendNotification(String.valueOf(ownerId), 
+                    "Ticket issued for vehicle " + plate + ": " + violation + " - $" + amount, "Email");
+            }
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
         }
