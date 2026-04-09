@@ -70,6 +70,18 @@ class DatabaseSetup {
             s.execute("INSERT OR IGNORE INTO Users(Id,Username,Password,Email,Phone,Role,Status) VALUES (1,'admin','240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9','admin@parking.com','1234567890','Admin','Active')");
             s.execute("INSERT OR IGNORE INTO Users(Id,Username,Password,Email,Phone,Role,Status) VALUES (2,'officer1','ecd71870d196cb6a38d13db1834d0a72d5d66cb946b3a501b99108d9f23e5c3e','officer1@parking.com','1234567891','Officer','Active')");
 
+            ResultSet rs = s.executeQuery("SELECT COUNT(*) as cnt FROM Zones");
+            if (rs.next() && rs.getInt("cnt") == 0) {
+                s.execute("INSERT INTO Zones(Id,Name,Rate,Status) VALUES (1,'Zone A',50.0,'Active')");
+                for (int i = 1; i <= 10; i++) {
+                    s.execute("INSERT INTO Slots(ZoneId,Status) VALUES (1,'Available')");
+                }
+                s.execute("INSERT INTO Zones(Id,Name,Rate,Status) VALUES (2,'Zone B',30.0,'Active')");
+                for (int i = 1; i <= 10; i++) {
+                    s.execute("INSERT INTO Slots(ZoneId,Status) VALUES (2,'Available')");
+                }
+            }
+
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
