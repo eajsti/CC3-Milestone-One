@@ -47,14 +47,24 @@ class TicketService {
 
             System.out.println("Ticket issued: " + violation + " - $" + amount + " (Due in 7 days)");
             
-            PreparedStatement findUser = c.prepareStatement(
-                    "SELECT v.UserId FROM Vehicles v WHERE v.Plate=?");
-            findUser.setString(1, plate);
-            ResultSet userRs = findUser.executeQuery();
-            if (userRs.next() && userRs.getInt("UserId") > 0) {
-                int ownerId = userRs.getInt("UserId");
-                NotificationService.sendNotification(String.valueOf(ownerId), 
-                    "Ticket issued for vehicle " + plate + ": " + violation + " - $" + amount, "Email");
+            try {
+                PreparedStatement findUser = c.prepareStatement(
+                        "SELECT v.UserId FROM Vehicles v WHERE v.Plate=?");
+                findUser.setString(1, plate);
+                ResultSet userRs = findUser.executeQuery();
+                if (userRs.next()) {
+                    int ownerId = userRs.getInt("UserId");
+                    System.out.println("[DEBUG] Found owner ID: " + ownerId);
+                    if (ownerId > 0) {
+                        NotificationService.sendNotification(String.valueOf(ownerId), 
+                            "Ticket issued for vehicle " + plate + ": " + violation + " - $" + amount, "Email");
+                        System.out.println("[DEBUG] Notification sent to user " + ownerId);
+                    } else {
+                        System.out.println("[DEBUG] No owner found for plate: " + plate);
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("Notification error: " + e.getMessage());
             }
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());

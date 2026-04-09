@@ -44,14 +44,20 @@ class FineService {
                     us.executeUpdate();
                     System.out.println("Payment successful.");
                     
-                    PreparedStatement findUser = c.prepareStatement(
-                            "SELECT v.UserId FROM Vehicles v JOIN Tickets t ON v.Plate=t.Plate WHERE t.Id=?");
-                    findUser.setInt(1, tid);
-                    ResultSet userRs = findUser.executeQuery();
-                    if (userRs.next() && userRs.getInt("UserId") > 0) {
-                        int ownerId = userRs.getInt("UserId");
-                        NotificationService.sendNotification(String.valueOf(ownerId), 
-                            "Payment confirmed for ticket " + tid + ". Thank you!", "Email");
+                    try {
+                        PreparedStatement findUser = c.prepareStatement(
+                                "SELECT v.UserId FROM Vehicles v JOIN Tickets t ON v.Plate=t.Plate WHERE t.Id=?");
+                        findUser.setInt(1, tid);
+                        ResultSet userRs = findUser.executeQuery();
+                        if (userRs.next()) {
+                            int ownerId = userRs.getInt("UserId");
+                            if (ownerId > 0) {
+                                NotificationService.sendNotification(String.valueOf(ownerId), 
+                                    "Payment confirmed for ticket " + tid + ". Thank you!", "Email");
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Notification error: " + e.getMessage());
                     }
                 }
             } else {
