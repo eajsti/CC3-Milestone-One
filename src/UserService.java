@@ -1,10 +1,28 @@
 import java.sql.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 
 class UserService {
     private static int currentUserId = 0;
     private static String currentRole = null;
     Scanner sc = new Scanner(System.in);
+
+    private static String hashPassword(String password) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(password.getBytes());
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            return password;
+        }
+    }
 
     public void register() {
         try (Connection c = DBConnection.connect()) {
@@ -13,6 +31,7 @@ class UserService {
             String u = sc.nextLine();
             System.out.print("Password: ");
             String p = sc.nextLine();
+            String hashedPassword = hashPassword(p);
             System.out.print("Email: ");
             String email = sc.nextLine();
             System.out.print("Phone: ");
@@ -28,7 +47,7 @@ class UserService {
             PreparedStatement ps = c.prepareStatement(
                     "INSERT INTO Users(Username,Password,Email,Phone,Role,Status) VALUES(?,?,?,?,?,'Active')");
             ps.setString(1, u);
-            ps.setString(2, p);
+            ps.setString(2, hashedPassword);
             ps.setString(3, email);
             ps.setString(4, phone);
             ps.setString(5, role);
@@ -47,11 +66,12 @@ class UserService {
             String u = sc.nextLine();
             System.out.print("Password: ");
             String p = sc.nextLine();
+            String hashedPassword = hashPassword(p);
 
             PreparedStatement ps = c.prepareStatement(
                     "SELECT Id, Role, Status FROM Users WHERE Username=? AND Password=?");
             ps.setString(1, u);
-            ps.setString(2, p);
+            ps.setString(2, hashedPassword);
 
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -104,14 +124,16 @@ class UserService {
             System.out.println("\n=== Change Password ===");
             System.out.print("Current Password: ");
             String oldPass = sc.nextLine();
+            String oldHashed = hashPassword(oldPass);
             System.out.print("New Password: ");
             String newPass = sc.nextLine();
+            String newHashed = hashPassword(newPass);
 
             PreparedStatement ps = c.prepareStatement(
                     "UPDATE Users SET Password=? WHERE Id=? AND Password=?");
-            ps.setString(1, newPass);
+            ps.setString(1, newHashed);
             ps.setInt(2, currentUserId);
-            ps.setString(3, oldPass);
+            ps.setString(3, oldHashed);
             int rows = ps.executeUpdate();
             if (rows > 0) {
                 System.out.println("Password changed.");
