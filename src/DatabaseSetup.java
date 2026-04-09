@@ -67,8 +67,8 @@ class DatabaseSetup {
                     "CreatedAt TEXT, " +
                     "FOREIGN KEY(UserId) REFERENCES Users(Id))");
 
-            s.execute("INSERT OR IGNORE INTO Users(Id,Username,Password,Email,Phone,Role,Status) VALUES (1,'admin','admin123','admin@parking.com','1234567890','Admin','Active')");
-            s.execute("INSERT OR IGNORE INTO Users(Id,Username,Password,Email,Phone,Role,Status) VALUES (2,'officer1','1234','officer1@parking.com','1234567891','Officer','Active')");
+            s.execute("INSERT OR IGNORE INTO Users(Id,Username,Password,Email,Phone,Role,Status) VALUES (1,'admin','240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9','admin@parking.com','1234567890','Admin','Active')");
+            s.execute("INSERT OR IGNORE INTO Users(Id,Username,Password,Email,Phone,Role,Status) VALUES (2,'officer1','ecd71870d196cb6a38d13db1834d0a72d5d66cb946b3a501b99108d9f23e5c3e','officer1@parking.com','1234567891','Officer','Active')");
 
         } catch (Exception e) {
             System.out.println(e.getMessage());
