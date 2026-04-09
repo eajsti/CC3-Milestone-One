@@ -18,9 +18,19 @@ class FineService {
     public void payFine() {
         System.out.println("\n=== Pay Fine ===");
         System.out.print("Ticket ID: ");
-        int tid = Integer.parseInt(sc.nextLine());
+        int tid;
+        try {
+            tid = Integer.parseInt(sc.nextLine());
+        } catch (Exception e) {
+            System.out.println("Invalid ticket ID.");
+            return;
+        }
         System.out.print("Plate Number: ");
         String plate = sc.nextLine();
+        if (plate.trim().isEmpty()) {
+            System.out.println("Plate number required.");
+            return;
+        }
 
         try (Connection c = DBConnection.connect()) {
             PreparedStatement ps = c.prepareStatement(
@@ -43,7 +53,27 @@ class FineService {
                     us.setInt(1, tid);
                     us.executeUpdate();
                     System.out.println("Payment successful.");
-                    NotificationService.sendNotification("Fine payment received for ticket " + tid);
+                    
+                    try {
+                        PreparedStatement findUser = c.prepareStatement(
+                                "SELECT v.UserId FROM Vehicles v JOIN Tickets t ON v.Plate=t.Plate WHERE t.Id=?");
+                        findUser.setInt(1, tid);
+                        ResultSet userRs = findUser.executeQuery();
+                        if (userRs.next()) {
+                            int ownerId = userRs.getInt("UserId");
+                            if (ownerId > 0) {
+                                PreparedStatement notif = c.prepareStatement(
+                                        "INSERT INTO Notifications(UserId,Message,Channel,Status,CreatedAt) VALUES(?,?,?,?,datetime('now'))");
+                                notif.setInt(1, ownerId);
+                                notif.setString(2, "Payment confirmed for ticket " + tid + ". Thank you!");
+                                notif.setString(3, "Email");
+                                notif.setString(4, "Pending");
+                                notif.executeUpdate();
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Notification error: " + e.getMessage());
+                    }
                 }
             } else {
                 System.out.println("Ticket not found.");
@@ -92,6 +122,67 @@ class FineService {
                         " | " + rs.getString("ViolationType") + " | $" + rs.getDouble("Amount") + 
                         " | " + rs.getString("DueDate"));
             }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void viewFineDetails() {
+        System.out.println("\n=== View Fine Details ===");
+        System.out.print("Enter Ticket ID: ");
+        int tid = Integer.parseInt(sc.nextLine());
+
+        try (Connection c = DBConnection.connect()) {
+            PreparedStatement ps = c.prepareStatement(
+                    "SELECT t.*, v.Make, v.Model FROM Tickets t " +
+                    "LEFT JOIN Sessions s ON t.SessionId = s.Id " +
+                    "LEFT JOIN Vehicles v ON s.VehicleId = v.Id OR t.Plate = v.Plate " +
+                    "WHERE t.Id = ?");
+            ps.setInt(1, tid);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                System.out.println("\n+--------------------------------------+");
+                System.out.println("|  FINE DETAILS                        |");
+                System.out.println("+--------------------------------------+");
+                System.out.println("|  Fine ID      : " + rs.getInt("Id") + "                |");
+                System.out.println("|  Plate        : " + rs.getString("Plate") + "                  |");
+                System.out.println("|  Violation    : " + rs.getString("ViolationType") + "                |");
+                System.out.printf("|  Base Fine    : $%.2f                |%n", rs.getDouble("Amount"));
+                System.out.println("|  Due Date     : " + rs.getString("DueDate") + "           |");
+                System.out.println("|  Status       : " + rs.getString("Status") + "               |");
+                System.out.println("|  Issued At    : " + rs.getString("IssuedAt") + "     |");
+                if (rs.getString("Make") != null) {
+                    System.out.println("|  Vehicle      : " + rs.getString("Make") + " " + rs.getString("Model") + "          |");
+                }
+                System.out.println("+--------------------------------------+");
+            } else {
+                System.out.println("Ticket not found.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void viewMyFines(String plate) {
+        try (Connection c = DBConnection.connect()) {
+            ResultSet rs = c.createStatement().executeQuery(
+                    "SELECT Id, ViolationType, Amount, Status, DueDate FROM Tickets WHERE Plate='" + plate + "'");
+
+            System.out.println("\n=== My Outstanding Fines ===");
+            System.out.println("ID | Violation | Amount | Status | Due Date");
+            System.out.println("--------------------------------------------");
+            double total = 0;
+            while (rs.next()) {
+                System.out.println(rs.getInt("Id") + " | " + rs.getString("ViolationType") + 
+                        " | $" + rs.getDouble("Amount") + " | " + rs.getString("Status") + 
+                        " | " + rs.getString("DueDate"));
+                if (!rs.getString("Status").equals("Paid")) {
+                    total += rs.getDouble("Amount");
+                }
+            }
+            System.out.println("------------------------------------------");
+            System.out.println("Total Outstanding Balance: $" + total);
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
         }
