@@ -19,6 +19,11 @@ class TicketService {
             System.out.println("5. Expired Registration - $200");
             System.out.print("Select Violation (1-5): ");
             int vtype = Integer.parseInt(sc.nextLine());
+            
+            if (vtype < 1 || vtype > 5) {
+                System.out.println("Invalid violation type.");
+                return;
+            }
 
             String[] violations = {"", "Expired Meter", "No Parking Zone", "Wrong Zone", "Blocking", "Expired Registration"};
             double[] fines = {0, 50, 100, 75, 150, 200};
@@ -58,8 +63,14 @@ class TicketService {
             if (userRs.next()) {
                 int ownerId = userRs.getInt("UserId");
                 if (ownerId > 0) {
-                    NotificationService.sendNotification(String.valueOf(ownerId), 
-                        "Ticket issued for vehicle " + plate + ": " + violation + " - $" + amount, "Email");
+                    PreparedStatement notif = c.prepareStatement(
+                            "INSERT INTO Notifications(UserId,Message,Channel,Status,CreatedAt) VALUES(?,?,?,?,datetime('now'))");
+                    notif.setInt(1, ownerId);
+                    notif.setString(2, "Ticket issued for vehicle " + plate + ": " + violation + " - $" + amount);
+                    notif.setString(3, "Email");
+                    notif.setString(4, "Pending");
+                    notif.executeUpdate();
+                    System.out.println("[NOTIFICATION]: Ticket notification sent to vehicle owner.");
                 }
             }
         } catch (Exception e) {

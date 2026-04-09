@@ -18,9 +18,19 @@ class FineService {
     public void payFine() {
         System.out.println("\n=== Pay Fine ===");
         System.out.print("Ticket ID: ");
-        int tid = Integer.parseInt(sc.nextLine());
+        int tid;
+        try {
+            tid = Integer.parseInt(sc.nextLine());
+        } catch (Exception e) {
+            System.out.println("Invalid ticket ID.");
+            return;
+        }
         System.out.print("Plate Number: ");
         String plate = sc.nextLine();
+        if (plate.trim().isEmpty()) {
+            System.out.println("Plate number required.");
+            return;
+        }
 
         try (Connection c = DBConnection.connect()) {
             PreparedStatement ps = c.prepareStatement(
@@ -52,8 +62,13 @@ class FineService {
                         if (userRs.next()) {
                             int ownerId = userRs.getInt("UserId");
                             if (ownerId > 0) {
-                                NotificationService.sendNotification(String.valueOf(ownerId), 
-                                    "Payment confirmed for ticket " + tid + ". Thank you!", "Email");
+                                PreparedStatement notif = c.prepareStatement(
+                                        "INSERT INTO Notifications(UserId,Message,Channel,Status,CreatedAt) VALUES(?,?,?,?,datetime('now'))");
+                                notif.setInt(1, ownerId);
+                                notif.setString(2, "Payment confirmed for ticket " + tid + ". Thank you!");
+                                notif.setString(3, "Email");
+                                notif.setString(4, "Pending");
+                                notif.executeUpdate();
                             }
                         }
                     } catch (Exception e) {
