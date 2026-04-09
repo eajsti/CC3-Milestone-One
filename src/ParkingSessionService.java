@@ -128,4 +128,49 @@ class ParkingSessionService {
             System.out.println("Error: " + e.getMessage());
         }
     }
+
+    public void viewActiveSessions() {
+        try (Connection c = DBConnection.connect()) {
+            ResultSet rs = c.createStatement().executeQuery(
+                    "SELECT s.Id, v.Plate, sl.Id as SlotId, s.Start, z.Name as ZoneName " +
+                    "FROM Sessions s JOIN Vehicles v ON s.VehicleId=v.Id " +
+                    "JOIN Slots sl ON s.SlotId=sl.Id JOIN Zones z ON sl.ZoneId=z.Id " +
+                    "WHERE s.End IS NULL");
+
+            System.out.println("\n=== Active Sessions ===");
+            System.out.println("ID | Plate | Zone | Slot | Entry Time | Status");
+            System.out.println("-------------------------------------------------");
+            while (rs.next()) {
+                System.out.println(rs.getInt("Id") + " | " + rs.getString("Plate") + 
+                        " | " + rs.getString("ZoneName") + " | " + rs.getInt("SlotId") + 
+                        " | " + rs.getString("Start") + " | Active");
+            }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void viewOverstayAlerts() {
+        try (Connection c = DBConnection.connect()) {
+            ResultSet rs = c.createStatement().executeQuery(
+                    "SELECT s.Id, v.Plate, sl.Id as SlotId, s.Start, z.Name as ZoneName, z.Rate, " +
+                    "(CAST((julianday('now') - julianday(s.Start)) * 24 AS INTEGER)) as HoursParked " +
+                    "FROM Sessions s JOIN Vehicles v ON s.VehicleId=v.Id " +
+                    "JOIN Slots sl ON s.SlotId=sl.Id JOIN Zones z ON sl.ZoneId=z.Id " +
+                    "WHERE s.End IS NULL AND (CAST((julianday('now') - julianday(s.Start)) * 24 AS INTEGER)) >= 3");
+
+            System.out.println("\n=== Overstay Alerts (3+ hours) ===");
+            System.out.println("ID | Plate | Zone | Slot | Entry | Overstay");
+            System.out.println("-------------------------------------------------");
+            while (rs.next()) {
+                int hours = rs.getInt("HoursParked");
+                int extra = hours - 3;
+                System.out.println(rs.getInt("Id") + " | " + rs.getString("Plate") + 
+                        " | " + rs.getString("ZoneName") + " | " + rs.getInt("SlotId") + 
+                        " | " + rs.getString("Start").substring(11, 16) + " | " + extra + " hrs extra");
+            }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
 }
