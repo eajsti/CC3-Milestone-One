@@ -5,6 +5,10 @@ class TicketService {
     Scanner sc = new Scanner(System.in);
 
     public void issueTicket(int officerZoneId) {
+        String plate = "";
+        String violation = "";
+        double amount = 0;
+        
         try (Connection c = DBConnection.connect()) {
             System.out.println("\n=== Issue Ticket ===");
             System.out.println("Violation Types:");
@@ -18,15 +22,15 @@ class TicketService {
 
             String[] violations = {"", "Expired Meter", "No Parking Zone", "Wrong Zone", "Blocking", "Expired Registration"};
             double[] fines = {0, 50, 100, 75, 150, 200};
-            String violation = violations[vtype];
-            double amount = fines[vtype];
+            violation = violations[vtype];
+            amount = fines[vtype];
 
             System.out.print("Plate Number: ");
-            String plate = sc.nextLine();
+            plate = sc.nextLine();
 
             int sessionId = -1;
             PreparedStatement ps = c.prepareStatement(
-                    "SELECT Id FROM Sessions s JOIN Vehicles v ON s.VehicleId=v.Id " +
+                    "SELECT s.Id FROM Sessions s JOIN Vehicles v ON s.VehicleId=v.Id " +
                     "WHERE v.Plate=? AND s.End IS NULL LIMIT 1");
             ps.setString(1, plate);
             ResultSet rs = ps.executeQuery();
@@ -46,7 +50,18 @@ class TicketService {
             ins.executeUpdate();
 
             System.out.println("Ticket issued: " + violation + " - $" + amount + " (Due in 7 days)");
-            NotificationService.sendNotification("Ticket issued: " + violation + " - $" + amount);
+            
+            PreparedStatement findUser = c.prepareStatement(
+                    "SELECT v.UserId FROM Vehicles v WHERE v.Plate=?");
+            findUser.setString(1, plate);
+            ResultSet userRs = findUser.executeQuery();
+            if (userRs.next()) {
+                int ownerId = userRs.getInt("UserId");
+                if (ownerId > 0) {
+                    NotificationService.sendNotification(String.valueOf(ownerId), 
+                        "Ticket issued for vehicle " + plate + ": " + violation + " - $" + amount, "Email");
+                }
+            }
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
         }
