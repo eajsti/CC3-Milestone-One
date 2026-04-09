@@ -19,6 +19,7 @@ class NotificationService {
             ps.executeUpdate();
             System.out.println("[NOTIFICATION-" + channel.toUpperCase() + "]: " + msg);
         } catch (Exception e) {
+            System.out.println("[NOTIFICATION ERROR]: " + e.getMessage());
             System.out.println("[NOTIFICATION]: " + msg);
         }
     }
