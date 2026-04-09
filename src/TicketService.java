@@ -90,4 +90,24 @@ class TicketService {
             System.out.println("Error: " + e.getMessage());
         }
     }
+
+    public void updateTicketStatus() {
+        System.out.println("\n=== Update Ticket Status [Admin] ===");
+        viewTickets();
+        System.out.print("\nEnter Ticket ID: ");
+        int tid = Integer.parseInt(sc.nextLine());
+        System.out.print("New Status (Pending/Paid/Voided/Overdue): ");
+        String status = sc.nextLine();
+
+        try (Connection c = DBConnection.connect()) {
+            PreparedStatement ps = c.prepareStatement("UPDATE Tickets SET Status=? WHERE Id=?");
+            ps.setString(1, status);
+            ps.setInt(2, tid);
+            ps.executeUpdate();
+            System.out.println("Ticket " + tid + " status updated to " + status);
+            NotificationService.sendNotification("Your ticket " + tid + " status has been updated to " + status);
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
 }
