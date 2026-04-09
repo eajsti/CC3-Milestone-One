@@ -118,4 +118,59 @@ class VehicleService {
             return -1;
         }
     }
+
+    public void removeVehicle(int userId) {
+        try (Connection c = DBConnection.connect()) {
+            viewMyVehicles(userId);
+            System.out.print("\nEnter Vehicle ID to remove: ");
+            int vid = Integer.parseInt(sc.nextLine());
+
+            PreparedStatement ps = c.prepareStatement(
+                    "SELECT Plate FROM Vehicles WHERE Id=? AND UserId=?");
+            ps.setInt(1, vid);
+            ps.setInt(2, userId);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                System.out.print("Confirm removal (y/n): ");
+                if (sc.nextLine().equalsIgnoreCase("y")) {
+                    PreparedStatement us = c.prepareStatement(
+                            "UPDATE Vehicles SET Status='Inactive' WHERE Id=?");
+                    us.setInt(1, vid);
+                    us.executeUpdate();
+                    System.out.println("Vehicle removed.");
+                    NotificationService.sendNotification("Vehicle " + rs.getString("Plate") + " removed from your account.");
+                }
+            } else {
+                System.out.println("Vehicle not found or not owned by you.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void checkRegistrationValidity(String plate) {
+        try (Connection c = DBConnection.connect()) {
+            PreparedStatement ps = c.prepareStatement(
+                    "SELECT Id, Plate, Make, Model, Color, Status FROM Vehicles WHERE Plate=?");
+            ps.setString(1, plate);
+            ResultSet rs = ps.executeQuery();
+
+            System.out.println("\n=== Check Registration Validity ===");
+            if (rs.next()) {
+                System.out.println("+--------------------------------------+");
+                System.out.println("|  Plate No. : " + rs.getString("Plate") + "                |");
+                System.out.println("|  Make      : " + rs.getString("Make") + "                    |");
+                System.out.println("|  Model     : " + rs.getString("Model") + "                    |");
+                System.out.println("|  Color     : " + rs.getString("Color") + "                    |");
+                String status = rs.getString("Status");
+                System.out.println("|  Status    : " + status + "               |");
+                System.out.println("+--------------------------------------+");
+            } else {
+                System.out.println("Vehicle not found in the system.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
 }
