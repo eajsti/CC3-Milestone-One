@@ -33,7 +33,7 @@ class Main {
                 if (role.equalsIgnoreCase("Driver")) {
                     driverMenu(sc, user, vehicle, area, session, ticket, fine);
                 } else if (role.equalsIgnoreCase("Officer")) {
-                    officerMenu(sc, ticket, fine, area);
+                    officerMenu(sc, ticket, fine, area, session);
                 } else if (role.equalsIgnoreCase("Admin")) {
                     adminMenu(sc, user, area, session, ticket, fine);
                 }
@@ -53,14 +53,18 @@ class Main {
             System.out.println("1. Register Vehicle");
             System.out.println("2. View My Vehicles");
             System.out.println("3. Edit Vehicle");
-            System.out.println("4. Start Parking");
-            System.out.println("5. End Parking");
-            System.out.println("6. View Session History");
-            System.out.println("7. View My Tickets");
-            System.out.println("8. Pay Fine");
-            System.out.println("9. Update Profile");
-            System.out.println("10. Change Password");
-            System.out.println("11. Logout");
+            System.out.println("4. Remove Vehicle");
+            System.out.println("5. Start Parking");
+            System.out.println("6. End Parking");
+            System.out.println("7. View Session History");
+            System.out.println("8. View My Tickets");
+            System.out.println("9. View My Fines");
+            System.out.println("10. Pay Fine");
+            System.out.println("11. View Notifications");
+            System.out.println("12. Mark Notification as Read");
+            System.out.println("13. Update Profile");
+            System.out.println("14. Change Password");
+            System.out.println("15. Logout");
             System.out.print("Choice: ");
             String ch = sc.nextLine();
 
@@ -71,6 +75,8 @@ class Main {
             } else if (ch.equals("3")) {
                 vehicle.editVehicle(uid);
             } else if (ch.equals("4")) {
+                vehicle.removeVehicle(uid);
+            } else if (ch.equals("5")) {
                 area.viewZones();
                 System.out.print("Select Zone ID: ");
                 int zid = Integer.parseInt(sc.nextLine());
@@ -78,17 +84,17 @@ class Main {
                 if (vid > 0) {
                     session.startSession(vid, zid);
                 }
-            } else if (ch.equals("5")) {
+            } else if (ch.equals("6")) {
                 int vid = vehicle.selectVehicle(uid);
                 if (vid > 0) {
                     session.endSession(vid);
                 }
-            } else if (ch.equals("6")) {
+            } else if (ch.equals("7")) {
                 int vid = vehicle.selectVehicle(uid);
                 if (vid > 0) {
                     session.viewSessionHistory(vid);
                 }
-            } else if (ch.equals("7")) {
+            } else if (ch.equals("8")) {
                 int vid = vehicle.selectVehicle(uid);
                 if (vid > 0) {
                     try (Connection c = DBConnection.connect()) {
@@ -102,26 +108,47 @@ class Main {
                         System.out.println("Error: " + e.getMessage());
                     }
                 }
-            } else if (ch.equals("8")) {
-                fine.payFine();
             } else if (ch.equals("9")) {
-                user.updateProfile();
+                int vid = vehicle.selectVehicle(uid);
+                if (vid > 0) {
+                    try (Connection c = DBConnection.connect()) {
+                        PreparedStatement ps = c.prepareStatement("SELECT Plate FROM Vehicles WHERE Id=?");
+                        ps.setInt(1, vid);
+                        ResultSet rs = ps.executeQuery();
+                        if (rs.next()) {
+                            fine.viewMyFines(rs.getString("Plate"));
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Error: " + e.getMessage());
+                    }
+                }
             } else if (ch.equals("10")) {
-                user.changePassword();
+                fine.payFine();
             } else if (ch.equals("11")) {
+                NotificationService.viewMyNotifications(uid);
+            } else if (ch.equals("12")) {
+                NotificationService.markNotificationAsRead(uid);
+            } else if (ch.equals("13")) {
+                user.updateProfile();
+            } else if (ch.equals("14")) {
+                user.changePassword();
+            } else if (ch.equals("15")) {
                 user.logout();
                 break;
             }
         }
     }
 
-    static void officerMenu(Scanner sc, TicketService ticket, FineService fine, ParkingAreaService area) {
+    static void officerMenu(Scanner sc, TicketService ticket, FineService fine, ParkingAreaService area, ParkingSessionService session) {
         while (true) {
             System.out.println("\n--- OFFICER MENU ---");
             System.out.println("1. Issue Ticket");
             System.out.println("2. View All Tickets");
             System.out.println("3. View Fines by Status");
-            System.out.println("4. Logout");
+            System.out.println("4. View Fine Details");
+            System.out.println("5. View Active Sessions");
+            System.out.println("6. View Overstay Alerts");
+            System.out.println("7. Logout");
             System.out.print("Choice: ");
             String ch = sc.nextLine();
 
@@ -135,6 +162,12 @@ class Main {
             } else if (ch.equals("3")) {
                 fine.viewFinesByStatus();
             } else if (ch.equals("4")) {
+                fine.viewFineDetails();
+            } else if (ch.equals("5")) {
+                session.viewActiveSessions();
+            } else if (ch.equals("6")) {
+                session.viewOverstayAlerts();
+            } else if (ch.equals("7")) {
                 break;
             }
         }
@@ -147,11 +180,17 @@ class Main {
             System.out.println("1. Manage Zones");
             System.out.println("2. Manage Slots");
             System.out.println("3. View All Sessions");
-            System.out.println("4. View All Tickets");
-            System.out.println("5. Apply Penalties");
-            System.out.println("6. View Outstanding Balances");
-            System.out.println("7. Manage Users");
-            System.out.println("8. Logout");
+            System.out.println("4. View Active Sessions");
+            System.out.println("5. View Overstay Alerts");
+            System.out.println("6. View All Tickets");
+            System.out.println("7. Update Ticket Status");
+            System.out.println("8. Apply Penalties");
+            System.out.println("9. View Outstanding Balances");
+            System.out.println("10. View All Fines");
+            System.out.println("11. View Fine Details");
+            System.out.println("12. Send Announcement");
+            System.out.println("13. Manage Users");
+            System.out.println("14. Logout");
             System.out.print("Choice: ");
             String ch = sc.nextLine();
 
@@ -162,14 +201,26 @@ class Main {
             } else if (ch.equals("3")) {
                 session.viewAllSessions();
             } else if (ch.equals("4")) {
-                ticket.viewTickets();
+                session.viewActiveSessions();
             } else if (ch.equals("5")) {
-                fine.applyPenalties();
+                session.viewOverstayAlerts();
             } else if (ch.equals("6")) {
-                fine.viewOutstandingBalances();
+                ticket.viewTickets();
             } else if (ch.equals("7")) {
-                user.manageUsers();
+                ticket.updateTicketStatus();
             } else if (ch.equals("8")) {
+                fine.applyPenalties();
+            } else if (ch.equals("9")) {
+                fine.viewOutstandingBalances();
+            } else if (ch.equals("10")) {
+                fine.viewFinesByStatus();
+            } else if (ch.equals("11")) {
+                fine.viewFineDetails();
+            } else if (ch.equals("12")) {
+                NotificationService.sendAnnouncement();
+            } else if (ch.equals("13")) {
+                user.manageUsers();
+            } else if (ch.equals("14")) {
                 break;
             }
         }
