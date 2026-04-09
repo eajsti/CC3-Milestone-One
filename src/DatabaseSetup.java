@@ -1,0 +1,77 @@
+import java.sql.*;
+
+class DatabaseSetup {
+    public static void init() {
+        try (Connection c = DBConnection.connect(); Statement s = c.createStatement()) {
+
+            s.execute("CREATE TABLE IF NOT EXISTS Users(" +
+                    "Id INTEGER PRIMARY KEY, " +
+                    "Username TEXT UNIQUE, " +
+                    "Password TEXT, " +
+                    "Email TEXT, " +
+                    "Phone TEXT, " +
+                    "Role TEXT, " +
+                    "Status TEXT DEFAULT 'Active')");
+
+            s.execute("CREATE TABLE IF NOT EXISTS Vehicles(" +
+                    "Id INTEGER PRIMARY KEY, " +
+                    "UserId INT, " +
+                    "Plate TEXT UNIQUE, " +
+                    "Make TEXT, " +
+                    "Model TEXT, " +
+                    "Color TEXT, " +
+                    "Status TEXT DEFAULT 'Active', " +
+                    "FOREIGN KEY(UserId) REFERENCES Users(Id))");
+
+            s.execute("CREATE TABLE IF NOT EXISTS Zones(" +
+                    "Id INTEGER PRIMARY KEY, " +
+                    "Name TEXT UNIQUE, " +
+                    "Rate REAL, " +
+                    "Status TEXT DEFAULT 'Active')");
+
+            s.execute("CREATE TABLE IF NOT EXISTS Slots(" +
+                    "Id INTEGER PRIMARY KEY, " +
+                    "ZoneId INT, " +
+                    "Status TEXT DEFAULT 'Available', " +
+                    "FOREIGN KEY(ZoneId) REFERENCES Zones(Id))");
+
+            s.execute("CREATE TABLE IF NOT EXISTS Sessions(" +
+                    "Id INTEGER PRIMARY KEY, " +
+                    "VehicleId INT, " +
+                    "SlotId INT, " +
+                    "Start TEXT, " +
+                    "End TEXT, " +
+                    "Fee REAL DEFAULT 0, " +
+                    "FOREIGN KEY(VehicleId) REFERENCES Vehicles(Id), " +
+                    "FOREIGN KEY(SlotId) REFERENCES Slots(Id))");
+
+            s.execute("CREATE TABLE IF NOT EXISTS Tickets(" +
+                    "Id INTEGER PRIMARY KEY, " +
+                    "Plate TEXT, " +
+                    "SessionId INT, " +
+                    "ZoneId INT, " +
+                    "ViolationType TEXT, " +
+                    "Amount REAL, " +
+                    "Status TEXT DEFAULT 'Pending', " +
+                    "DueDate TEXT, " +
+                    "IssuedAt TEXT, " +
+                    "FOREIGN KEY(SessionId) REFERENCES Sessions(Id), " +
+                    "FOREIGN KEY(ZoneId) REFERENCES Zones(Id))");
+
+            s.execute("CREATE TABLE IF NOT EXISTS Notifications(" +
+                    "Id INTEGER PRIMARY KEY, " +
+                    "UserId INT, " +
+                    "Message TEXT, " +
+                    "Channel TEXT, " +
+                    "Status TEXT DEFAULT 'Pending', " +
+                    "CreatedAt TEXT, " +
+                    "FOREIGN KEY(UserId) REFERENCES Users(Id))");
+
+            s.execute("INSERT OR IGNORE INTO Users(Id,Username,Password,Email,Phone,Role,Status) VALUES (1,'admin','admin123','admin@parking.com','1234567890','Admin','Active')");
+            s.execute("INSERT OR IGNORE INTO Users(Id,Username,Password,Email,Phone,Role,Status) VALUES (2,'officer1','1234','officer1@parking.com','1234567891','Officer','Active')");
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
