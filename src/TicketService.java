@@ -26,7 +26,7 @@ class TicketService {
 
             int sessionId = -1;
             PreparedStatement ps = c.prepareStatement(
-                    "SELECT Id FROM Sessions s JOIN Vehicles v ON s.VehicleId=v.Id " +
+                    "SELECT s.Id FROM Sessions s JOIN Vehicles v ON s.VehicleId=v.Id " +
                     "WHERE v.Plate=? AND s.End IS NULL LIMIT 1");
             ps.setString(1, plate);
             ResultSet rs = ps.executeQuery();
