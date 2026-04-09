@@ -18,7 +18,17 @@ class ParkingAreaService {
             ps.setDouble(2, rate);
             ps.executeUpdate();
 
-            System.out.println("Zone added successfully.");
+            ResultSet rs = ps.getGeneratedKeys();
+            int zoneId = rs.getInt(1);
+
+            for (int i = 1; i <= 10; i++) {
+                PreparedStatement slotPs = c.prepareStatement(
+                        "INSERT INTO Slots(ZoneId,Status) VALUES(?,'Available')");
+                slotPs.setInt(1, zoneId);
+                slotPs.executeUpdate();
+            }
+
+            System.out.println("Zone added successfully. (10 slots created)");
         } catch (SQLException e) {
             if (e.getMessage().contains("UNIQUE constraint failed")) {
                 System.out.println("Error: Zone name already exists.");
