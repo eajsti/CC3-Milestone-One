@@ -1,0 +1,4 @@
+*.class
+bin/
+parking.db
+.vscode/
