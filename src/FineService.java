@@ -48,8 +48,31 @@ class FineService {
                 System.out.println("Total due: $" + amount);
                 System.out.print("Confirm payment (y/n): ");
                 if (sc.nextLine().equalsIgnoreCase("y")) {
+                    // Single query: get both customer name and owner ID for notification
+                    String customerName = null;
+                    int ownerId = -1;
+                    try (PreparedStatement findUser = c.prepareStatement(
+                            "SELECT u.Id as OwnerId, u.Username " +
+                            "FROM Vehicles v JOIN Tickets t ON v.Plate = t.Plate " +
+                            "JOIN Users u ON v.UserId = u.Id " +
+                            "WHERE t.Id=?")) {
+                        findUser.setInt(1, tid);
+                        ResultSet userRs = findUser.executeQuery();
+                        if (userRs.next()) {
+                            ownerId = userRs.getInt("OwnerId");
+                            customerName = userRs.getString("Username");
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Customer lookup error: " + e.getMessage());
+                    }
+
+                    if (customerName == null || ownerId <= 0) {
+                        System.out.println("Cannot determine customer information. Payment cancelled.");
+                        return;
+                    }
+
                     PaymentService paymentService = new PaymentService();
-                    boolean paid = paymentService.chargeTransaction(plate, tid, "Fine", amount);
+                    boolean paid = paymentService.chargeTransaction(customerName, tid, "Fine", amount);
                     if (paid) {
                         PreparedStatement us = c.prepareStatement(
                                 "UPDATE Tickets SET Status='Paid' WHERE Id=?");
@@ -57,26 +80,14 @@ class FineService {
                         us.executeUpdate();
                         System.out.println("Payment successful.");
 
-                        try {
-                            PreparedStatement findUser = c.prepareStatement(
-                                    "SELECT v.UserId FROM Vehicles v JOIN Tickets t ON v.Plate=t.Plate WHERE t.Id=?");
-                            findUser.setInt(1, tid);
-                            ResultSet userRs = findUser.executeQuery();
-                            if (userRs.next()) {
-                                int ownerId = userRs.getInt("UserId");
-                                if (ownerId > 0) {
-                                    PreparedStatement notif = c.prepareStatement(
-                                            "INSERT INTO Notifications(UserId,Message,Channel,Status,CreatedAt) VALUES(?,?,?,?,datetime('now'))");
-                                    notif.setInt(1, ownerId);
-                                    notif.setString(2, "Payment confirmed for ticket " + tid + ". Thank you!");
-                                    notif.setString(3, "Email");
-                                    notif.setString(4, "Pending");
-                                    notif.executeUpdate();
-                                }
-                            }
-                        } catch (Exception e) {
-                            System.out.println("Notification error: " + e.getMessage());
-                        }
+                        // Use the ownerId already retrieved - no second query needed
+                        PreparedStatement notif = c.prepareStatement(
+                                "INSERT INTO Notifications(UserId,Message,Channel,Status,CreatedAt) VALUES(?,?,?,?,datetime('now'))");
+                        notif.setInt(1, ownerId);
+                        notif.setString(2, "Payment confirmed for ticket " + tid + ". Thank you!");
+                        notif.setString(3, "Email");
+                        notif.setString(4, "Pending");
+                        notif.executeUpdate();
                     } else {
                         System.out.println("Payment failed. Ticket remains unpaid.");
                     }
@@ -117,9 +128,18 @@ class FineService {
         String choice = sc.nextLine();
 
         try (Connection c = DBConnection.connect()) {
-            String status = choice.equals("1") ? "Pending" : choice.equals("2") ? "Paid" : "Overdue";
-            ResultSet rs = c.createStatement().executeQuery(
-                    "SELECT Id, Plate, ViolationType, Amount, DueDate FROM Tickets WHERE Status='" + status + "'");
+            String status;
+            if (choice.equals("1")) {
+                status = "Pending";
+            } else if (choice.equals("2")) {
+                status = "Paid";
+            } else {
+                status = "Overdue";
+            }
+            PreparedStatement ps = c.prepareStatement(
+                    "SELECT Id, Plate, ViolationType, Amount, DueDate FROM Tickets WHERE Status=?");
+            ps.setString(1, status);
+            ResultSet rs = ps.executeQuery();
             System.out.println("\n=== " + status + " Fines ===");
             System.out.println("ID | Plate | Violation | Amount | Due Date");
             System.out.println("------------------------------------------");
@@ -171,9 +191,10 @@ class FineService {
     }
 
     public void viewMyFines(String plate) {
-        try (Connection c = DBConnection.connect()) {
-            ResultSet rs = c.createStatement().executeQuery(
-                    "SELECT Id, ViolationType, Amount, Status, DueDate FROM Tickets WHERE Plate='" + plate + "'");
+        try (Connection c = DBConnection.connect(); PreparedStatement ps = c.prepareStatement(
+                "SELECT Id, ViolationType, Amount, Status, DueDate FROM Tickets WHERE Plate=?")) {
+            ps.setString(1, plate);
+            ResultSet rs = ps.executeQuery();
 
             System.out.println("\n=== My Outstanding Fines ===");
             System.out.println("ID | Violation | Amount | Status | Due Date");

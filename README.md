@@ -22,9 +22,14 @@ A Java-based console application for managing parking sessions, tickets, and fin
 - Added FinanceService.java (provides income statement and payment history reports)
 - Updated ParkingSessionService.java to charge payments on session end
 - Updated FineService.java to charge payments for fine settlements
-- Added Payments table to database schema
+- Added Payments table to database schema with proper foreign keys and CHECK constraints
 - Enhanced driver menu with "View My Payments" option
 - Enhanced admin menu with "View Income Statement" and "View Payment History" options
+- Added CreditBalance column to Users table for payment method tracking
+- Fixed critical SQL injection vulnerabilities in FineService and NotificationService
+- Fixed data integrity: customer names now correctly stored (usernames instead of plate/vehicle IDs)
+- Fixed: Payment records now use proper foreign key references (SessionReferenceId / FineReferenceId)
+- Fixed: User credit balances are atomically updated upon payment
 - Fixed bug: Prevent starting duplicate parking sessions
 - Fixed bug: Improved feedback when no vehicles are registered
 - Fixed bug: Normalized role input during registration (e.g., "driver" -> "Driver")

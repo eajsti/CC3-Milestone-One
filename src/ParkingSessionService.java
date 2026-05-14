@@ -91,8 +91,8 @@ class ParkingSessionService {
 
             c.createStatement().execute("UPDATE Sessions SET Fee=" + fee + " WHERE Id=" + sessionId);
 
-            PaymentService paymentService = new PaymentService();
-            String customerName = "Vehicle " + vehicleId;
+            // Get customer name from Vehicles -> Users join BEFORE payment
+            String customerName = null;
             try (PreparedStatement namePs = c.prepareStatement(
                     "SELECT u.Username FROM Vehicles v JOIN Users u ON v.UserId=u.Id WHERE v.Id=?")) {
                 namePs.setInt(1, vehicleId);
@@ -101,6 +101,14 @@ class ParkingSessionService {
                     customerName = nameRs.getString("Username");
                 }
             }
+
+            if (customerName == null) {
+                System.out.println("Cannot determine customer name. Payment cancelled.");
+                c.createStatement().execute("UPDATE Slots SET Status='Available' WHERE Id=" + slotId);
+                return;
+            }
+
+            PaymentService paymentService = new PaymentService();
             boolean paid = paymentService.chargeTransaction(customerName, sessionId, "Parking", fee);
             if (!paid) {
                 System.out.println("Payment was not completed. Please pay the outstanding parking fee later.");

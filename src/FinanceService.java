@@ -28,8 +28,10 @@ class FinanceService {
     public void viewPaymentHistory() {
         try (Connection c = DBConnection.connect()) {
             ResultSet rs = c.createStatement().executeQuery(
-                    "SELECT TransactionID, Name, Type, ReferenceId, Amount, VAT, DiscountRate, FinalAmount, CreatedAt " +
-                            "FROM Payments ORDER BY CreatedAt DESC");
+                    "SELECT TransactionID, Name, Type, " +
+                    "COALESCE(SessionReferenceId, FineReferenceId) as ReferenceId, " +
+                    "Amount, VAT, DiscountRate, FinalAmount, CreatedAt " +
+                    "FROM Payments ORDER BY CreatedAt DESC");
 
             System.out.println("\n=== Payment History ===");
             System.out.println("Txn ID | Name | Type | Ref | Amount | Final | Date");
@@ -47,13 +49,17 @@ class FinanceService {
 
     public void viewMyPayments(int userId) {
         try (Connection c = DBConnection.connect(); PreparedStatement ps = c.prepareStatement(
-                "SELECT p.TransactionID, p.Type, p.ReferenceId, p.Amount, p.FinalAmount, p.CreatedAt, " +
-                        "COALESCE((SELECT Plate FROM Vehicles v WHERE v.Id = (SELECT s.VehicleId FROM Sessions s WHERE p.Type='Parking' AND s.Id = p.ReferenceId)), " +
-                        "(SELECT Plate FROM Tickets t WHERE p.Type='Fine' AND t.Id = p.ReferenceId), 'N/A') AS Plate " +
-                        "FROM Payments p " +
-                        "WHERE (p.Type='Parking' AND p.ReferenceId IN (SELECT s.Id FROM Sessions s WHERE s.VehicleId IN (SELECT Id FROM Vehicles WHERE UserId=?))) " +
-                        "OR (p.Type='Fine' AND p.ReferenceId IN (SELECT t.Id FROM Tickets t WHERE t.Plate IN (SELECT Plate FROM Vehicles WHERE UserId=?))) " +
-                        "ORDER BY p.CreatedAt DESC")) {
+                "SELECT p.TransactionID, p.Type, " +
+                "COALESCE(p.SessionReferenceId, p.FineReferenceId) as ReferenceId, " +
+                "p.Amount, p.FinalAmount, p.CreatedAt, " +
+                "COALESCE(" +
+                "   (SELECT Plate FROM Vehicles v WHERE v.Id = (SELECT s.VehicleId FROM Sessions s WHERE p.Type='Parking' AND s.Id = p.SessionReferenceId)), " +
+                "   (SELECT Plate FROM Tickets t WHERE p.Type='Fine' AND t.Id = p.FineReferenceId), " +
+                "   'N/A') AS Plate " +
+                "FROM Payments p " +
+                "WHERE (p.Type='Parking' AND p.SessionReferenceId IN (SELECT s.Id FROM Sessions s WHERE s.VehicleId IN (SELECT Id FROM Vehicles WHERE UserId=?))) " +
+                "OR (p.Type='Fine' AND p.FineReferenceId IN (SELECT t.Id FROM Tickets t WHERE t.Plate IN (SELECT Plate FROM Vehicles WHERE UserId=?))) " +
+                "ORDER BY p.CreatedAt DESC")) {
 
             ps.setInt(1, userId);
             ps.setInt(2, userId);

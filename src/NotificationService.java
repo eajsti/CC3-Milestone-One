@@ -89,21 +89,27 @@ class NotificationService {
         String channel = sc.nextLine();
 
         try (Connection c = DBConnection.connect()) {
-            String query = "SELECT Id FROM Users";
-            if (!role.equalsIgnoreCase("All")) {
-                query += " WHERE Role='" + role + "'";
+            String query;
+            PreparedStatement ps;
+            if (role.equalsIgnoreCase("All")) {
+                query = "SELECT Id FROM Users";
+                ps = c.prepareStatement(query);
+            } else {
+                query = "SELECT Id FROM Users WHERE Role=?";
+                ps = c.prepareStatement(query);
+                ps.setString(1, role);
             }
-            ResultSet rs = c.createStatement().executeQuery(query);
+            ResultSet rs = ps.executeQuery();
 
             int count = 0;
             while (rs.next()) {
-                PreparedStatement ps = c.prepareStatement(
+                PreparedStatement insertPs = c.prepareStatement(
                         "INSERT INTO Notifications(UserId,Message,Channel,Status,CreatedAt) VALUES(?,?,?,?,datetime('now'))");
-                ps.setInt(1, rs.getInt("Id"));
-                ps.setString(2, subject + " - " + msg);
-                ps.setString(3, channel);
-                ps.setString(4, "Pending");
-                ps.executeUpdate();
+                insertPs.setInt(1, rs.getInt("Id"));
+                insertPs.setString(2, subject + " - " + msg);
+                insertPs.setString(3, channel);
+                insertPs.setString(4, "Pending");
+                insertPs.executeUpdate();
                 count++;
             }
             System.out.println("Announcement sent to " + count + " user(s).");
